@@ -1,0 +1,1 @@
+conda activate torchenv && python chart.py
