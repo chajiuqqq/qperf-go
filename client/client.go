@@ -2,32 +2,47 @@ package client
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
-	"github.com/dustin/go-humanize"
-	"github.com/lucas-clemente/quic-go"
-	"github.com/lucas-clemente/quic-go/logging"
 	"io"
 	"net"
 	"os"
 	"os/signal"
 	"qperf-go/common"
 	"time"
+
+	"github.com/dustin/go-humanize"
+	"github.com/lucas-clemente/quic-go"
+	"github.com/lucas-clemente/quic-go/logging"
 )
 
-type client struct {
+const (
+	defaultFileName = "export.json"
+)
+
+type Client struct {
 	state          common.State
 	printRaw       bool
 	reportInterval time.Duration
 	logger         common.Logger
+	StatesHistory  []*States
+}
+
+type States struct {
+	RateBytes float64
+	Bytes     uint64
+	Second    int
+	Packets   uint64
 }
 
 // Run client.
 // if proxyAddr is nil, no proxy is used.
 func Run(addr net.UDPAddr, timeToFirstByteOnly bool, printRaw bool, createQLog bool, migrateAfter time.Duration, proxyAddr *net.UDPAddr, probeTime time.Duration, reportInterval time.Duration, tlsServerCertFile string, tlsProxyCertFile string, initialCongestionWindow uint32, initialReceiveWindow uint64, maxReceiveWindow uint64, use0RTT bool, useProxy0RTT, allowEarlyHandover bool, useXse bool, logPrefix string, qlogPrefix string) {
-	c := client{
+	c := Client{
 		state:          common.State{},
 		printRaw:       printRaw,
 		reportInterval: reportInterval,
+		StatesHistory:  make([]*States, 0),
 	}
 
 	c.logger = common.DefaultLogger.WithPrefix(logPrefix)
@@ -215,7 +230,7 @@ func Run(addr net.UDPAddr, timeToFirstByteOnly bool, printRaw bool, createQLog b
 	c.reportTotal(&c.state)
 }
 
-func (c *client) reportEstablishmentTime(state *common.State) {
+func (c *Client) reportEstablishmentTime(state *common.State) {
 	establishmentTime := state.EstablishmentTime().Sub(state.StartTime())
 	if c.printRaw {
 		c.logger.Infof("connection establishment time: %f s",
@@ -226,7 +241,7 @@ func (c *client) reportEstablishmentTime(state *common.State) {
 	}
 }
 
-func (c *client) reportFirstByte(state *common.State) {
+func (c *Client) reportFirstByte(state *common.State) {
 	if c.printRaw {
 		c.logger.Infof("time to first byte: %f s",
 			state.GetFirstByteTime().Sub(state.StartTime()).Seconds())
@@ -236,8 +251,9 @@ func (c *client) reportFirstByte(state *common.State) {
 	}
 }
 
-func (c *client) report(state *common.State) {
+func (c *Client) report(state *common.State) {
 	receivedBytes, receivedPackets, delta := state.GetAndResetReport()
+
 	if c.printRaw {
 		c.logger.Infof("second %f: %f bit/s, bytes received: %d B, packets received: %d",
 			time.Now().Sub(state.GetFirstByteTime()).Seconds(),
@@ -257,9 +273,15 @@ func (c *client) report(state *common.State) {
 			humanize.SI(float64(receivedBytes), "B"),
 			receivedPackets)
 	}
+	c.StatesHistory = append(c.StatesHistory, &States{
+		RateBytes: float64(receivedBytes) / delta.Seconds(),
+		Bytes:     receivedBytes,
+		Second:    int(time.Now().Sub(state.GetFirstByteTime()).Seconds()),
+		Packets:   receivedPackets,
+	})
 }
 
-func (c *client) reportTotal(state *common.State) {
+func (c *Client) reportTotal(state *common.State) {
 	receivedBytes, receivedPackets := state.Total()
 	if c.printRaw {
 		c.logger.Infof("total: bytes received: %d B, packets received: %d",
@@ -270,9 +292,15 @@ func (c *client) reportTotal(state *common.State) {
 			humanize.SI(float64(receivedBytes), "B"),
 			receivedPackets)
 	}
+	if err := c.exportStates(defaultFileName); err == nil {
+		c.logger.Infof("export states success:%s", defaultFileName)
+	} else {
+		c.logger.Infof("export states error:%s", err.Error())
+	}
+
 }
 
-func (c *client) receiveFirstByte(stream quic.ReceiveStream) error {
+func (c *Client) receiveFirstByte(stream quic.ReceiveStream) error {
 	buf := make([]byte, 1)
 	for {
 		received, err := stream.Read(buf)
@@ -286,7 +314,7 @@ func (c *client) receiveFirstByte(stream quic.ReceiveStream) error {
 	}
 }
 
-func (c *client) receive(reader io.Reader) {
+func (c *Client) receive(reader io.Reader) {
 	buf := make([]byte, 65536)
 	for {
 		received, err := reader.Read(buf)
@@ -302,4 +330,23 @@ func (c *client) receive(reader io.Reader) {
 			}
 		}
 	}
+}
+
+// '[{"col 1":"a","col 2":"b"},{"col 1":"c","col 2":"d"}]' 形式导出
+// pd.read_json(_, orient='records') 导入
+func (c *Client) exportStates(fileName string) error {
+	b, err := json.MarshalIndent(c.StatesHistory, "", "\t")
+	if err != nil {
+		return err
+	}
+	f, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.Write(b)
+	if err != nil {
+		return err
+	}
+	return nil
 }
