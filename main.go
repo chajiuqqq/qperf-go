@@ -123,6 +123,11 @@ func main() {
 						Usage: "the prefix of the command line output",
 						Value: "",
 					},
+					&cli.StringFlag{
+						Name:  "log-name",
+						Usage: "the name of the log file",
+						Value: client.DefaultFileName,
+					},
 				},
 				Action: func(c *cli.Context) error {
 					var proxyAddr *net.UDPAddr
@@ -166,6 +171,7 @@ func main() {
 						c.Bool("xse"),
 						c.String("log-prefix"),
 						c.String("qlog-prefix"),
+						c.String("log-name"),
 					)
 					return nil
 				},

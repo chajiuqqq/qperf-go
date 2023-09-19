@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path"
 	"qperf-go/common"
 	"time"
 
@@ -17,7 +18,7 @@ import (
 )
 
 const (
-	defaultFileName = "log/export.json"
+	DefaultFileName = "export.json"
 )
 
 type Client struct {
@@ -37,7 +38,7 @@ type States struct {
 
 // Run client.
 // if proxyAddr is nil, no proxy is used.
-func Run(addr net.UDPAddr, timeToFirstByteOnly bool, printRaw bool, createQLog bool, migrateAfter time.Duration, proxyAddr *net.UDPAddr, probeTime time.Duration, reportInterval time.Duration, tlsServerCertFile string, tlsProxyCertFile string, initialCongestionWindow uint32, initialReceiveWindow uint64, maxReceiveWindow uint64, use0RTT bool, useProxy0RTT, allowEarlyHandover bool, useXse bool, logPrefix string, qlogPrefix string) {
+func Run(addr net.UDPAddr, timeToFirstByteOnly bool, printRaw bool, createQLog bool, migrateAfter time.Duration, proxyAddr *net.UDPAddr, probeTime time.Duration, reportInterval time.Duration, tlsServerCertFile string, tlsProxyCertFile string, initialCongestionWindow uint32, initialReceiveWindow uint64, maxReceiveWindow uint64, use0RTT bool, useProxy0RTT, allowEarlyHandover bool, useXse bool, logPrefix string, qlogPrefix string, logName string) {
 	c := Client{
 		state:          common.State{},
 		printRaw:       printRaw,
@@ -227,7 +228,7 @@ func Run(addr net.UDPAddr, timeToFirstByteOnly bool, printRaw bool, createQLog b
 		panic(fmt.Errorf("failed to close connection: %w", err))
 	}
 
-	c.reportTotal(&c.state)
+	c.reportTotal(&c.state, logName)
 }
 
 func (c *Client) reportEstablishmentTime(state *common.State) {
@@ -281,7 +282,7 @@ func (c *Client) report(state *common.State) {
 	})
 }
 
-func (c *Client) reportTotal(state *common.State) {
+func (c *Client) reportTotal(state *common.State, logName string) {
 	receivedBytes, receivedPackets := state.Total()
 	if c.printRaw {
 		c.logger.Infof("total: bytes received: %d B, packets received: %d",
@@ -292,8 +293,13 @@ func (c *Client) reportTotal(state *common.State) {
 			humanize.SI(float64(receivedBytes), "B"),
 			receivedPackets)
 	}
-	if err := c.exportStates(defaultFileName); err == nil {
-		c.logger.Infof("export states success:%s", defaultFileName)
+	var sum uint64
+	for _, v := range c.StatesHistory {
+		sum += v.Bytes
+	}
+	c.logger.Infof("average: %s", humanize.SIWithDigits(float64(sum)*8/float64(len(c.StatesHistory)), 3, "bit/s"))
+	if err := c.exportStates(logName); err == nil {
+		c.logger.Infof("export states success:%s", logName)
 	} else {
 		c.logger.Infof("export states error:%s", err.Error())
 	}
@@ -339,7 +345,7 @@ func (c *Client) exportStates(fileName string) error {
 	if err != nil {
 		return err
 	}
-	f, err := os.Create(fileName)
+	f, err := os.Create(path.Join("log", fileName))
 	if err != nil {
 		return err
 	}
