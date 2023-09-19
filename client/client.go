@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	defaultFileName = "export.json"
+	defaultFileName = "log/export.json"
 )
 
 type Client struct {
