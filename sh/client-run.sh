@@ -1,1 +1,1 @@
-./qperf-go client --addr="127.0.0.1:1234" --t=3
+./qperf-go client --log-name='12loss-5mbps.json' --addr="192.168.1.5:1234" --t=10 --tls-cert='./cert/certificate.crt'
