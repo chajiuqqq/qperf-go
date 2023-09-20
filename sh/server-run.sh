@@ -1,1 +1,1 @@
-./qperf-go server --port=1234
+./qperf-go server --tls-cert='./cert/certificate.crt' --tls-key='./cert/private.key' --port=1234
