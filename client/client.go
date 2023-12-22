@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	defaultFileName = "export.json"
+	defaultFileName = "result/qperf_result.json"
 )
 
 type Client struct {
