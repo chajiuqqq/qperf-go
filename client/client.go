@@ -29,7 +29,7 @@ type Client struct {
 }
 
 type States struct {
-	RateBytes float64
+	RateBits float64
 	Bytes     uint64
 	Second    int
 	Packets   uint64
@@ -274,7 +274,7 @@ func (c *Client) report(state *common.State) {
 			receivedPackets)
 	}
 	c.StatesHistory = append(c.StatesHistory, &States{
-		RateBytes: float64(receivedBytes) / delta.Seconds(),
+		RateBits: float64(receivedBytes)*8 / delta.Seconds(),
 		Bytes:     receivedBytes,
 		Second:    int(time.Now().Sub(state.GetFirstByteTime()).Seconds()),
 		Packets:   receivedPackets,
