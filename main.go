@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/lucas-clemente/quic-go"
-	"github.com/urfave/cli/v2"
 	"net"
 	"os"
 	"qperf-go/client"
 	"qperf-go/common"
 	"qperf-go/server"
 	"time"
+
+	"github.com/lucas-clemente/quic-go"
+	"github.com/urfave/cli/v2"
 )
 
 const defaultServerTLSCertificateFile = "server.crt"
@@ -30,12 +31,11 @@ func main() {
 			},
 			{
 				Name:  "client",
-				Usage: "run in client mode",
+				Usage: "run in client mode,if use http3, follow your urls as args",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "addr",
 						Usage:    fmt.Sprintf("address to connect to, in the form \"host:port\", default port %d if not specified", quic.DefaultHQUICProxyControlPort),
-						Required: true,
 					},
 					&cli.BoolFlag{
 						Name:  "ttfb",
@@ -123,6 +123,14 @@ func main() {
 						Usage: "the prefix of the command line output",
 						Value: "",
 					},
+					&cli.BoolFlag{
+						Name:  "http3",
+						Usage: "enable http3 mode",
+					},
+					&cli.BoolFlag{
+						Name:  "quiet",
+						Usage: "don't print the data in http3",
+					},
 				},
 				Action: func(c *cli.Context) error {
 					var proxyAddr *net.UDPAddr
@@ -134,7 +142,7 @@ func main() {
 						}
 					}
 					serverAddr, err := common.ParseResolveHost(c.String("addr"), common.DefaultQperfServerPort)
-					if err != nil {
+					if !c.Bool("http3") && err != nil {
 						println("invalid server address")
 						panic(err)
 					}
@@ -166,6 +174,9 @@ func main() {
 						c.Bool("xse"),
 						c.String("log-prefix"),
 						c.String("qlog-prefix"),
+						c.Bool("http3"),
+						c.Bool("quiet"),
+						c.Args(),
 					)
 					return nil
 				},
@@ -242,6 +253,14 @@ func main() {
 						Usage: "the prefix of the command line output",
 						Value: "",
 					},
+					&cli.BoolFlag{
+						Name:  "http3",
+						Usage: "enable http3 server",
+					},
+					&cli.StringFlag{
+						Name:  "www",
+						Usage: "static folder for http3",
+					},
 				},
 				Action: func(c *cli.Context) error {
 					initialReceiveWindow, err := common.ParseByteCountWithUnit(c.String("initial-receive-window"))
@@ -268,6 +287,8 @@ func main() {
 						c.Bool("no-xse"),
 						c.String("log-prefix"),
 						c.String("qlog-prefix"),
+						c.Bool("http3"),
+						c.String("www"),
 					)
 					return nil
 				},

@@ -1,23 +1,30 @@
 package client
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"qperf-go/common"
+	"sync"
 	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/lucas-clemente/quic-go"
+	"github.com/lucas-clemente/quic-go/http3"
 	"github.com/lucas-clemente/quic-go/logging"
+	"github.com/urfave/cli/v2"
 )
 
 const (
 	defaultFileName = "result/qperf_result.json"
+	defaultHttp3ResultName = "result/qperf_http3_result.json"
 )
 
 type Client struct {
@@ -30,14 +37,14 @@ type Client struct {
 
 type States struct {
 	RateBits float64
-	Bytes     uint64
-	Second    int
-	Packets   uint64
+	Bytes    uint64
+	Second   int
+	Packets  uint64
 }
 
 // Run client.
 // if proxyAddr is nil, no proxy is used.
-func Run(addr net.UDPAddr, timeToFirstByteOnly bool, printRaw bool, createQLog bool, migrateAfter time.Duration, proxyAddr *net.UDPAddr, probeTime time.Duration, reportInterval time.Duration, tlsServerCertFile string, tlsProxyCertFile string, initialCongestionWindow uint32, initialReceiveWindow uint64, maxReceiveWindow uint64, use0RTT bool, useProxy0RTT, allowEarlyHandover bool, useXse bool, logPrefix string, qlogPrefix string) {
+func Run(addr net.UDPAddr, timeToFirstByteOnly bool, printRaw bool, createQLog bool, migrateAfter time.Duration, proxyAddr *net.UDPAddr, probeTime time.Duration, reportInterval time.Duration, tlsServerCertFile string, tlsProxyCertFile string, initialCongestionWindow uint32, initialReceiveWindow uint64, maxReceiveWindow uint64, use0RTT bool, useProxy0RTT, allowEarlyHandover bool, useXse bool, logPrefix string, qlogPrefix string, http3enabled bool, quiet bool, args cli.Args) {
 	c := Client{
 		state:          common.State{},
 		printRaw:       printRaw,
@@ -144,6 +151,11 @@ func Run(addr net.UDPAddr, timeToFirstByteOnly bool, printRaw bool, createQLog b
 	}
 
 	c.state.SetStartTime()
+
+	if http3enabled {
+		serverHttp3(c.logger, tlsConf, &conf, quiet, args.Slice())
+		return
+	}
 
 	var connection quic.Connection
 	if use0RTT {
@@ -274,10 +286,10 @@ func (c *Client) report(state *common.State) {
 			receivedPackets)
 	}
 	c.StatesHistory = append(c.StatesHistory, &States{
-		RateBits: float64(receivedBytes)*8 / delta.Seconds(),
-		Bytes:     receivedBytes,
-		Second:    int(time.Now().Sub(state.GetFirstByteTime()).Seconds()),
-		Packets:   receivedPackets,
+		RateBits: float64(receivedBytes) * 8 / delta.Seconds(),
+		Bytes:    receivedBytes,
+		Second:   int(time.Now().Sub(state.GetFirstByteTime()).Seconds()),
+		Packets:  receivedPackets,
 	})
 }
 
@@ -349,4 +361,69 @@ func (c *Client) exportStates(fileName string) error {
 		return err
 	}
 	return nil
+}
+
+func serverHttp3(logger common.Logger, tlsconf *tls.Config, quicConf *quic.Config, quiet bool, urls []string) {
+	roundTripper := &http3.RoundTripper{
+		TLSClientConfig: tlsconf,
+		QuicConfig:      quicConf,
+	}
+	defer roundTripper.Close()
+	hclient := &http.Client{
+		Transport: roundTripper,
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(urls))
+	statesAll := make([]common.Http3States,0)
+	for _, addr := range urls {
+		logger.Infof("GET %s", addr)
+		go func(addr string) {
+			state := common.Http3States{StartTime: time.Now(), URL: addr}
+			rsp, err := hclient.Get(addr)
+			if err != nil {
+				log.Fatal(err)
+			}
+			// logger.Infof("Got response for %s: %#v", addr, rsp)
+
+			body := &bytes.Buffer{}
+			_, err = io.Copy(body, rsp.Body)
+			if err != nil {
+				log.Fatal(err)
+			}
+			state.EndTime = time.Now()
+			state.BodySizeByte = body.Len()
+			state.TimeUsageMS = state.EndTime.Sub(state.StartTime).Milliseconds()
+			if quiet {
+				logger.Infof("Response Body: %d bytes", body.Len())
+			} else {
+				logger.Infof("Response Body:")
+				logger.Infof("%s", body.Bytes())
+			}
+			logger.Infof("report: url[%s] timeUsage[%s ms] size[%d B]", state.URL,
+				state.TimeUsageMS,
+				state.BodySizeByte,
+			)
+			statesAll = append(statesAll, state)
+			wg.Done()
+		}(addr)
+	}
+	wg.Wait()
+	reportHttp3States(statesAll)
+}
+
+func reportHttp3States(states []common.Http3States){
+	b, err := json.MarshalIndent(states, "", "\t")
+	if err != nil {
+		panic(err)
+	}
+	f, err := os.Create(defaultHttp3ResultName)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	_, err = f.Write(b)
+	if err != nil {
+		panic(err)
+	}
 }
