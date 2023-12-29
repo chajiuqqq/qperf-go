@@ -23,8 +23,12 @@ import (
 )
 
 const (
-	defaultFileName = "result/qperf_result.json"
+	// defaultFileName        = "result/qperf_result.json"
 	defaultHttp3ResultName = "result/qperf_http3_result.json"
+)
+
+var (
+	exportFileName string
 )
 
 type Client struct {
@@ -45,6 +49,7 @@ type States struct {
 // Run client.
 // if proxyAddr is nil, no proxy is used.
 func Run(addr net.UDPAddr, timeToFirstByteOnly bool, printRaw bool, createQLog bool, migrateAfter time.Duration, proxyAddr *net.UDPAddr, probeTime time.Duration, reportInterval time.Duration, tlsServerCertFile string, tlsProxyCertFile string, initialCongestionWindow uint32, initialReceiveWindow uint64, maxReceiveWindow uint64, use0RTT bool, useProxy0RTT, allowEarlyHandover bool, useXse bool, logPrefix string, qlogPrefix string, http3enabled bool, quiet bool, args cli.Args) {
+	exportFileName = fmt.Sprintf("result/qperf_%s_result.json", logPrefix)
 	c := Client{
 		state:          common.State{},
 		printRaw:       printRaw,
@@ -304,8 +309,8 @@ func (c *Client) reportTotal(state *common.State) {
 			humanize.SI(float64(receivedBytes), "B"),
 			receivedPackets)
 	}
-	if err := c.exportStates(defaultFileName); err == nil {
-		c.logger.Infof("export states success:%s", defaultFileName)
+	if err := c.exportStates(exportFileName); err == nil {
+		c.logger.Infof("export states success:%s", exportFileName)
 	} else {
 		c.logger.Infof("export states error:%s", err.Error())
 	}
@@ -375,7 +380,7 @@ func serverHttp3(logger common.Logger, tlsconf *tls.Config, quicConf *quic.Confi
 
 	var wg sync.WaitGroup
 	wg.Add(len(urls))
-	statesAll := make([]common.Http3States,0)
+	statesAll := make([]common.Http3States, 0)
 	for _, addr := range urls {
 		logger.Infof("GET %s", addr)
 		go func(addr string) {
@@ -412,7 +417,7 @@ func serverHttp3(logger common.Logger, tlsconf *tls.Config, quicConf *quic.Confi
 	reportHttp3States(statesAll)
 }
 
-func reportHttp3States(states []common.Http3States){
+func reportHttp3States(states []common.Http3States) {
 	b, err := json.MarshalIndent(states, "", "\t")
 	if err != nil {
 		panic(err)
