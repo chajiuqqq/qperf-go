@@ -27,6 +27,7 @@ type Client struct {
 	reportInterval time.Duration
 	logger         common.Logger
 	StatesHistory  []*States
+	AvgBytes       float64
 }
 
 type States struct {
@@ -274,12 +275,19 @@ func (c *Client) report(state *common.State) {
 			humanize.SI(float64(receivedBytes), "B"),
 			receivedPackets)
 	}
+	second := int(time.Now().Sub(state.GetFirstByteTime()).Seconds())
 	c.StatesHistory = append(c.StatesHistory, &States{
 		RateBytes: float64(receivedBytes) / delta.Seconds(),
 		Bytes:     receivedBytes,
-		Second:    int(time.Now().Sub(state.GetFirstByteTime()).Seconds()),
+		Second:    second,
 		Packets:   receivedPackets,
 	})
+
+	var sum uint64
+	for _, v := range c.StatesHistory {
+		sum += v.Bytes
+	}
+	c.AvgBytes = float64(sum) * 8 / float64(len(c.StatesHistory))
 }
 
 func (c *Client) reportTotal(state *common.State, logName string) {
@@ -293,11 +301,7 @@ func (c *Client) reportTotal(state *common.State, logName string) {
 			humanize.SI(float64(receivedBytes), "B"),
 			receivedPackets)
 	}
-	var sum uint64
-	for _, v := range c.StatesHistory {
-		sum += v.Bytes
-	}
-	c.logger.Infof("average: %s", humanize.SIWithDigits(float64(sum)*8/float64(len(c.StatesHistory)), 3, "bit/s"))
+	c.logger.Infof("average: %s", humanize.SIWithDigits(c.AvgBytes, 2, "bit/s"))
 	if err := c.exportStates(logName); err == nil {
 		c.logger.Infof("export states success:%s", logName)
 	} else {
@@ -341,7 +345,14 @@ func (c *Client) receive(reader io.Reader) {
 // '[{"col 1":"a","col 2":"b"},{"col 1":"c","col 2":"d"}]' 形式导出
 // pd.read_json(_, orient='records') 导入
 func (c *Client) exportStates(fileName string) error {
-	b, err := json.MarshalIndent(c.StatesHistory, "", "\t")
+	output := struct {
+		StatesHistory []*States
+		AvgRate       string
+	}{
+		StatesHistory: c.StatesHistory,
+		AvgRate:       humanize.SIWithDigits(c.AvgBytes, 2, "bit/s"),
+	}
+	b, err := json.MarshalIndent(output, "", "\t")
 	if err != nil {
 		return err
 	}
