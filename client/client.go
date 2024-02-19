@@ -49,7 +49,7 @@ type States struct {
 // Run client.
 // if proxyAddr is nil, no proxy is used.
 func Run(addr net.UDPAddr, timeToFirstByteOnly bool, printRaw bool, createQLog bool, migrateAfter time.Duration, proxyAddr *net.UDPAddr, probeTime time.Duration, reportInterval time.Duration, tlsServerCertFile string, tlsProxyCertFile string, initialCongestionWindow uint32, initialReceiveWindow uint64, maxReceiveWindow uint64, use0RTT bool, useProxy0RTT, allowEarlyHandover bool, useXse bool, logPrefix string, qlogPrefix string, http3enabled bool, quiet bool, args cli.Args) {
-	exportFileName = fmt.Sprintf("result/qperf_%s_result.json", logPrefix)
+	exportFileName = fmt.Sprintf("result/%s_quic.json", logPrefix)
 	c := Client{
 		state:          common.State{},
 		printRaw:       printRaw,

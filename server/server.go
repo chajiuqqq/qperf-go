@@ -164,7 +164,7 @@ func setupHandler(www string) http.Handler {
 
 	r := gin.Default()
 	r.SetHTMLTemplate(html)
-	r.Static("/www", "./www")
+	r.Static("/www", www)
 	
 	r.GET("/test", func(c *gin.Context) {
 		c.JSON(200,gin.H{
