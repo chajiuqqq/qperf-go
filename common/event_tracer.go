@@ -1,16 +1,12 @@
 package common
 
 import (
-	"github.com/lucas-clemente/quic-go/logging"
+	"github.com/quic-go/quic-go/logging"
 	"net"
 )
 
-import (
-	"context"
-)
-
 type eventTracer struct {
-	logging.NullTracer
+	logging.Tracer
 	handlers Handlers
 }
 
@@ -20,21 +16,21 @@ type Handlers struct {
 	ClosedConnection  func(odcid logging.ConnectionID, err error)
 }
 
-func NewEventTracer(handlers Handlers) logging.Tracer {
-	return &eventTracer{
-		handlers: handlers,
-	}
-}
+// func NewEventTracer(handlers Handlers) logging.Tracer {
+// 	return &eventTracer{
+// 		handlers: handlers,
+// 	}
+// }
 
-func (a eventTracer) TracerForConnection(ctx context.Context, p logging.Perspective, odcid logging.ConnectionID) logging.ConnectionTracer {
-	return connectionEventTracer{
-		odcid:   odcid,
-		handers: a.handlers,
-	}
-}
+// func (a eventTracer) TracerForConnection(ctx context.Context, p logging.Perspective, odcid logging.ConnectionID) logging.ConnectionTracer {
+// 	return connectionEventTracer{
+// 		odcid:   odcid,
+// 		handers: a.handlers,
+// 	}
+// }
 
 type connectionEventTracer struct {
-	logging.NullConnectionTracer
+	logging.ConnectionTracer
 	odcid   logging.ConnectionID
 	handers Handlers
 }

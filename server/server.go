@@ -12,9 +12,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/lucas-clemente/quic-go"
-	"github.com/lucas-clemente/quic-go/http3"
-	"github.com/lucas-clemente/quic-go/logging"
+	"github.com/quic-go/quic-go"
+	"github.com/quic-go/quic-go/http3"
 )
 
 // Run server.
@@ -23,24 +22,25 @@ func Run(addr net.UDPAddr, createQLog bool, migrateAfter time.Duration, tlsServe
 
 	logger := common.DefaultLogger.WithPrefix(logPrefix)
 
-	tracers := make([]logging.Tracer, 0)
+	// tracers := make([]logging.Tracer, 0)
 
 	if createQLog {
-		tracers = append(tracers, common.NewQlogTracer(qlogPrefix, logger))
+		// tracers = append(tracers, common.NewQlogTracer(qlogPrefix, logger))
 	}
 
-	//TODO somehow associate it with the qperf session for logging
-	tracers = append(tracers, common.NewEventTracer(common.Handlers{
-		UpdatePath: func(odcid logging.ConnectionID, newRemote net.Addr) {
-			logger.Infof("migrated QUIC connection %s to %s", odcid.String(), newRemote)
-		},
-		StartedConnection: func(odcid logging.ConnectionID, local, remote net.Addr, srcConnID, destConnID logging.ConnectionID) {
-			logger.Infof("started QUIC connection %s", odcid.String())
-		},
-		ClosedConnection: func(odcid logging.ConnectionID, err error) {
-			logger.Infof("closed QUIC connection %s", odcid.String())
-		},
-	}))
+	// TODO somehow associate it with the qperf session for logging
+
+	// tracers = append(tracers, common.NewEventTracer(common.Handlers{
+	// 	UpdatePath: func(odcid logging.ConnectionID, newRemote net.Addr) {
+	// 		logger.Infof("migrated QUIC connection %s to %s", odcid.String(), newRemote)
+	// 	},
+	// 	StartedConnection: func(odcid logging.ConnectionID, local, remote net.Addr, srcConnID, destConnID logging.ConnectionID) {
+	// 		logger.Infof("started QUIC connection %s", odcid.String())
+	// 	},
+	// 	ClosedConnection: func(odcid logging.ConnectionID, err error) {
+	// 		logger.Infof("closed QUIC connection %s", odcid.String())
+	// 	},
+	// }))
 
 	if initialReceiveWindow > maxReceiveWindow {
 		maxReceiveWindow = initialReceiveWindow
@@ -51,26 +51,26 @@ func Run(addr net.UDPAddr, createQLog bool, migrateAfter time.Duration, tlsServe
 	}
 
 	conf := quic.Config{
-		Tracer:                         logging.NewMultiplexedTracer(tracers...),
-		EnableActiveMigration:          true,
-		InitialCongestionWindow:        initialCongestionWindow,
-		MinCongestionWindow:            minCongestionWindow,
-		MaxCongestionWindow:            maxCongestionWindow,
-		InitialStreamReceiveWindow:     initialReceiveWindow,
-		MaxStreamReceiveWindow:         maxReceiveWindow,
-		InitialConnectionReceiveWindow: uint64(float64(initialReceiveWindow) * quic.ConnectionFlowControlMultiplier),
-		MaxConnectionReceiveWindow:     uint64(float64(maxReceiveWindow) * quic.ConnectionFlowControlMultiplier),
-		//TODO add option to disable mtu discovery
-		//TODO add option to enable address prevalidation
+		// Tracer:                         logging.NewMultiplexedTracer(tracers...),
+		// EnableActiveMigration:          true,
+		// InitialCongestionWindow:        initialCongestionWindow,
+		// MinCongestionWindow:            minCongestionWindow,
+		// MaxCongestionWindow:            maxCongestionWindow,
+		InitialStreamReceiveWindow: initialReceiveWindow,
+		MaxStreamReceiveWindow:     maxReceiveWindow,
+		// InitialConnectionReceiveWindow: uint64(float64(initialReceiveWindow) * quic.ConnectionFlowControlMultiplier),
+		// MaxConnectionReceiveWindow:     uint64(float64(maxReceiveWindow) * quic.ConnectionFlowControlMultiplier),
+		// TODO add option to disable mtu discovery
+		// TODO add option to enable address prevalidation
 	}
 
-	if noXse {
-		conf.ExtraStreamEncryption = quic.DisableExtraStreamEncryption
-	} else {
-		conf.ExtraStreamEncryption = quic.PreferExtraStreamEncryption
-	}
+	// if noXse {
+	// 	conf.ExtraStreamEncryption = quic.DisableExtraStreamEncryption
+	// } else {
+	// 	conf.ExtraStreamEncryption = quic.PreferExtraStreamEncryption
+	// }
 
-	//TODO make CLI option
+	// TODO make CLI option
 	tlsCert, err := tls.LoadX509KeyPair(tlsServerCertFile, tlsServerKeyFile)
 	if err != nil {
 		panic(err)
@@ -104,19 +104,19 @@ func Run(addr net.UDPAddr, createQLog bool, migrateAfter time.Duration, tlsServe
 	}
 
 	// print new reno as this is the only option in quic-go
-	logger.Infof("starting server with pid %d, port %d, cc new reno, iw %d", os.Getpid(), addr.Port, conf.InitialCongestionWindow)
+	logger.Infof("starting server with pid %d, port %d, cc new reno", os.Getpid(), addr.Port)
 
 	// migrate
-	if migrateAfter.Nanoseconds() != 0 {
-		go func() {
-			time.Sleep(migrateAfter)
-			addr, err := listener.MigrateUDPSocket()
-			if err != nil {
-				panic(err)
-			}
-			logger.Infof("migrated to %s", addr.String())
-		}()
-	}
+	// if migrateAfter.Nanoseconds() != 0 {
+	// 	go func() {
+	// 		time.Sleep(migrateAfter)
+	// 		addr, err := listener.MigrateUDPSocket()
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 		logger.Infof("migrated to %s", addr.String())
+	// 	}()
+	// }
 
 	var nextConnectionId uint64 = 0
 
@@ -165,10 +165,10 @@ func setupHandler(www string) http.Handler {
 	r := gin.Default()
 	r.SetHTMLTemplate(html)
 	r.Static("/www", www)
-	
+
 	r.GET("/test", func(c *gin.Context) {
-		c.JSON(200,gin.H{
-			"status":"success",
+		c.JSON(200, gin.H{
+			"status": "success",
 		})
 	})
 	r.GET("/html/:filename", func(c *gin.Context) {

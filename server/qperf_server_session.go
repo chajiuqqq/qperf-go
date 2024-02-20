@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/lucas-clemente/quic-go"
+	"github.com/quic-go/quic-go"
 	"qperf-go/common"
 	"sync"
 )
@@ -18,9 +18,9 @@ type qperfServerSession struct {
 
 func (s *qperfServerSession) run() {
 	s.logger.Infof("open")
-	if s.connection.ExtraStreamEncrypted() {
-		s.logger.Infof("use XSE-QUIC")
-	}
+	// if s.connection.ExtraStreamEncrypted() {
+	// 	s.logger.Infof("use XSE-QUIC")
+	// }
 
 	for {
 		quicStream, err := s.connection.AcceptStream(context.Background())

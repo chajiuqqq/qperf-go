@@ -9,7 +9,7 @@ go build
 ```
 
 ## Setup
-It is recommended to increase the maximum buffer size by running (See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size for details):
+It is recommended to increase the maximum buffer size by running (See https://github.com/quic-go/quic-go/wiki/UDP-Receive-Buffer-Size for details):
 
 ```bash
 sysctl -w net.core.rmem_max=2500000

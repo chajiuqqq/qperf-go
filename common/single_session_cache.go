@@ -3,7 +3,6 @@ package common
 import (
 	"context"
 	"crypto/tls"
-	"github.com/marten-seemann/qtls-go1-19"
 )
 
 type SingleSessionCache struct {
@@ -13,7 +12,7 @@ type SingleSessionCache struct {
 	session            *tls.ClientSessionState
 }
 
-var _ qtls.ClientSessionCache = (*SingleSessionCache)(nil)
+// var _ qtls.ClientSessionCache = (*SingleSessionCache)(nil)
 
 func (s *SingleSessionCache) Get(sessionKey string) (session *tls.ClientSessionState, ok bool) {
 	select {
@@ -31,7 +30,7 @@ func (s *SingleSessionCache) Put(sessionKey string, cs *tls.ClientSessionState) 
 	case <-s.emptyContext.Done():
 		return // already set
 	default:
-		//TODO make thread safe
+		// TODO make thread safe
 		s.sessionKey = &sessionKey
 		s.session = cs
 		s.emptyContextCancel()

@@ -1,23 +1,22 @@
 package common
 
 import (
-	"context"
-	"github.com/lucas-clemente/quic-go/logging"
+	"github.com/quic-go/quic-go/logging"
 )
 
 type StateTracer struct {
-	logging.NullTracer
+	logging.Tracer
 	State *State
 }
 
-func (a StateTracer) TracerForConnection(ctx context.Context, p logging.Perspective, odcid logging.ConnectionID) logging.ConnectionTracer {
-	return StateConnectionTracer{
-		State: a.State,
-	}
-}
+// func (a StateTracer) TracerForConnection(ctx context.Context, p logging.Perspective, odcid logging.ConnectionID) logging.ConnectionTracer {
+// 	return StateConnectionTracer{
+// 		State: a.State,
+// 	}
+// }
 
 type StateConnectionTracer struct {
-	logging.NullConnectionTracer
+	logging.ConnectionTracer
 	State *State
 }
 

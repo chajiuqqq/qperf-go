@@ -2,15 +2,13 @@ package main
 
 import (
 	"fmt"
+	"github.com/urfave/cli/v2"
 	"net"
 	"os"
 	"qperf-go/client"
 	"qperf-go/common"
 	"qperf-go/server"
 	"time"
-
-	"github.com/lucas-clemente/quic-go"
-	"github.com/urfave/cli/v2"
 )
 
 const defaultServerTLSCertificateFile = "server.crt"
@@ -34,8 +32,8 @@ func main() {
 				Usage: "run in client mode,if use http3, follow your urls as args",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "addr",
-						Usage:    fmt.Sprintf("address to connect to, in the form \"host:port\", default port %d if not specified", quic.DefaultHQUICProxyControlPort),
+						Name:  "addr",
+						Usage: fmt.Sprintf("address to connect to, in the form \"host:port\""),
 					},
 					&cli.BoolFlag{
 						Name:  "ttfb",
@@ -81,7 +79,7 @@ func main() {
 					&cli.UintFlag{
 						Name:  "initial-congestion-window",
 						Usage: "the initial congestion window to use, in number of packets",
-						Value: quic.DefaultInitialCongestionWindow,
+						Value: 100,
 					},
 					&cli.StringFlag{
 						Name:  "initial-receive-window",
@@ -135,11 +133,11 @@ func main() {
 				Action: func(c *cli.Context) error {
 					var proxyAddr *net.UDPAddr
 					if c.IsSet("proxy") {
-						var err error
-						proxyAddr, err = common.ParseResolveHost(c.String("proxy"), quic.DefaultHQUICProxyControlPort)
-						if err != nil {
-							panic(err)
-						}
+						// var err error
+						// proxyAddr, err = common.ParseResolveHost(c.String("proxy"), quic.DefaultHQUICProxyControlPort)
+						// if err != nil {
+						// 	panic(err)
+						// }
 					}
 					serverAddr, err := common.ParseResolveHost(c.String("addr"), common.DefaultQperfServerPort)
 					if !c.Bool("http3") && err != nil {
@@ -213,21 +211,21 @@ func main() {
 						Usage: "key file to use",
 						Value: defaultServerTLSKeyFile,
 					},
-					&cli.UintFlag{
-						Name:  "initial-congestion-window",
-						Usage: "the initial congestion window to use, in number of packets",
-						Value: quic.DefaultInitialCongestionWindow,
-					},
-					&cli.UintFlag{
-						Name:  "min-congestion-window",
-						Usage: "the minimum congestion window to use, in number of packets",
-						Value: quic.DefaultMinCongestionWindow,
-					},
-					&cli.UintFlag{
-						Name:  "max-congestion-window",
-						Usage: "the maximum congestion window to use, in number of packets",
-						Value: quic.DefaultMaxCongestionWindow,
-					},
+					// &cli.UintFlag{
+					// 	Name:  "initial-congestion-window",
+					// 	Usage: "the initial congestion window to use, in number of packets",
+					// 	Value: quic.DefaultInitialCongestionWindow,
+					// },
+					// &cli.UintFlag{
+					// 	Name:  "min-congestion-window",
+					// 	Usage: "the minimum congestion window to use, in number of packets",
+					// 	Value: quic.DefaultMinCongestionWindow,
+					// },
+					// &cli.UintFlag{
+					// 	Name:  "max-congestion-window",
+					// 	Usage: "the maximum congestion window to use, in number of packets",
+					// 	Value: quic.DefaultMaxCongestionWindow,
+					// },
 					&cli.StringFlag{
 						Name:  "initial-receive-window",
 						Usage: "the initial stream-level receive window, in bytes (the connection-level window is 1.5 times higher)",

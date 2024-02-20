@@ -2,9 +2,12 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/dustin/go-humanize"
+	"github.com/urfave/cli/v2"
 	"io"
 	"log"
 	"net"
@@ -15,11 +18,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dustin/go-humanize"
-	"github.com/lucas-clemente/quic-go"
-	"github.com/lucas-clemente/quic-go/http3"
-	"github.com/lucas-clemente/quic-go/logging"
-	"github.com/urfave/cli/v2"
+	"github.com/quic-go/quic-go"
+	"github.com/quic-go/quic-go/http3"
 )
 
 const (
@@ -59,56 +59,56 @@ func Run(addr net.UDPAddr, timeToFirstByteOnly bool, printRaw bool, createQLog b
 
 	c.logger = common.DefaultLogger.WithPrefix(logPrefix)
 
-	tracers := make([]logging.Tracer, 0)
+	// tracers := make([]logging.Tracer, 0)
+	//
+	// tracers = append(tracers, common.StateTracer{
+	// 	State: &c.state,
+	// })
 
-	tracers = append(tracers, common.StateTracer{
-		State: &c.state,
-	})
+	// if createQLog {
+	// 	tracers = append(tracers, common.NewQlogTracer(qlogPrefix, c.logger))
+	// }
 
-	if createQLog {
-		tracers = append(tracers, common.NewQlogTracer(qlogPrefix, c.logger))
-	}
-
-	tracers = append(tracers, common.NewEventTracer(common.Handlers{
-		UpdatePath: func(odcid logging.ConnectionID, newRemote net.Addr) {
-			c.logger.Infof("migrated QUIC connection %s to %s at %.3f s", odcid.String(), newRemote, time.Now().Sub(c.state.GetStartTime()).Seconds())
-		},
-		StartedConnection: func(odcid logging.ConnectionID, local, remote net.Addr, srcConnID, destConnID logging.ConnectionID) {
-			c.logger.Infof("started QUIC connection %s", odcid.String())
-		},
-		ClosedConnection: func(odcid logging.ConnectionID, err error) {
-			c.logger.Infof("closed QUIC connection %s", odcid.String())
-		},
-	}))
+	// tracers = append(tracers, common.NewEventTracer(common.Handlers{
+	// 	UpdatePath: func(odcid logging.ConnectionID, newRemote net.Addr) {
+	// 		c.logger.Infof("migrated QUIC connection %s to %s at %.3f s", odcid.String(), newRemote, time.Now().Sub(c.state.GetStartTime()).Seconds())
+	// 	},
+	// 	StartedConnection: func(odcid logging.ConnectionID, local, remote net.Addr, srcConnID, destConnID logging.ConnectionID) {
+	// 		c.logger.Infof("started QUIC connection %s", odcid.String())
+	// 	},
+	// 	ClosedConnection: func(odcid logging.ConnectionID, err error) {
+	// 		c.logger.Infof("closed QUIC connection %s", odcid.String())
+	// 	},
+	// }))
 
 	if initialReceiveWindow > maxReceiveWindow {
 		maxReceiveWindow = initialReceiveWindow
 	}
 
-	var proxyConf *quic.ProxyConfig
-
-	if proxyAddr != nil {
-		proxyConf = &quic.ProxyConfig{
-			Addr: proxyAddr.String(),
-			TlsConf: &tls.Config{
-				RootCAs:            common.NewCertPoolWithCert(tlsProxyCertFile),
-				NextProtos:         []string{quic.HQUICProxyALPN},
-				ClientSessionCache: tls.NewLRUClientSessionCache(1),
-			},
-			Config: &quic.Config{
-				LoggerPrefix:          "proxy control",
-				TokenStore:            quic.NewLRUTokenStore(1, 1),
-				EnableActiveMigration: true,
-			},
-		}
-	}
+	// var proxyConf *quic.ProxyConfig
+	//
+	// if proxyAddr != nil {
+	// 	proxyConf = &quic.ProxyConfig{
+	// 		Addr: proxyAddr.String(),
+	// 		TlsConf: &tls.Config{
+	// 			RootCAs:            common.NewCertPoolWithCert(tlsProxyCertFile),
+	// 			NextProtos:         []string{quic.HQUICProxyALPN},
+	// 			ClientSessionCache: tls.NewLRUClientSessionCache(1),
+	// 		},
+	// 		Config: &quic.Config{
+	// 			LoggerPrefix:          "proxy control",
+	// 			TokenStore:            quic.NewLRUTokenStore(1, 1),
+	// 			EnableActiveMigration: true,
+	// 		},
+	// 	}
+	// }
 
 	if useProxy0RTT {
-		err := common.PingToGatherSessionTicketAndToken(proxyConf.Addr, proxyConf.TlsConf, proxyConf.Config)
-		if err != nil {
-			panic(fmt.Errorf("failed to prepare 0-RTT to proxy: %w", err))
-		}
-		c.logger.Infof("stored session ticket and address token of proxy for 0-RTT")
+		// err := common.PingToGatherSessionTicketAndToken(proxyConf.Addr, proxyConf.TlsConf, proxyConf.Config)
+		// if err != nil {
+		// 	panic(fmt.Errorf("failed to prepare 0-RTT to proxy: %w", err))
+		// }
+		// c.logger.Infof("stored session ticket and address token of proxy for 0-RTT")
 	}
 
 	var clientSessionCache tls.ClientSessionCache
@@ -128,24 +128,24 @@ func Run(addr net.UDPAddr, timeToFirstByteOnly bool, printRaw bool, createQLog b
 	}
 
 	conf := quic.Config{
-		Tracer: logging.NewMultiplexedTracer(tracers...),
-		IgnoreReceived1RTTPacketsUntilFirstPathMigration: proxyAddr != nil, // TODO maybe not necessary for client
-		EnableActiveMigration:                            true,
-		ProxyConf:                                        proxyConf,
-		InitialCongestionWindow:                          initialCongestionWindow,
-		InitialStreamReceiveWindow:                       initialReceiveWindow,
-		MaxStreamReceiveWindow:                           maxReceiveWindow,
-		InitialConnectionReceiveWindow:                   uint64(float64(initialReceiveWindow) * quic.ConnectionFlowControlMultiplier),
-		MaxConnectionReceiveWindow:                       uint64(float64(maxReceiveWindow) * quic.ConnectionFlowControlMultiplier),
-		TokenStore:                                       tokenStore,
-		AllowEarlyHandover:                               allowEarlyHandover,
+		// Tracer: logging.NewMultiplexedTracer(tracers...),
+		// IgnoreReceived1RTTPacketsUntilFirstPathMigration: proxyAddr != nil, // TODO maybe not necessary for client
+		// EnableActiveMigration:                            true,
+		// ProxyConf:                                        proxyConf,
+		// InitialCongestionWindow:                          initialCongestionWindow,
+		InitialStreamReceiveWindow: initialReceiveWindow,
+		MaxStreamReceiveWindow:     maxReceiveWindow,
+		// InitialConnectionReceiveWindow:                   uint64(float64(initialReceiveWindow) * quic.ConnectionFlowControlMultiplier),
+		// MaxConnectionReceiveWindow:                       uint64(float64(maxReceiveWindow) * quic.ConnectionFlowControlMultiplier),
+		TokenStore: tokenStore,
+		// AllowEarlyHandover:                               allowEarlyHandover,
 	}
 
-	if useXse {
-		conf.ExtraStreamEncryption = quic.EnforceExtraStreamEncryption
-	} else {
-		conf.ExtraStreamEncryption = quic.DisableExtraStreamEncryption
-	}
+	// if useXse {
+	// 	conf.ExtraStreamEncryption = quic.EnforceExtraStreamEncryption
+	// } else {
+	// 	conf.ExtraStreamEncryption = quic.DisableExtraStreamEncryption
+	// }
 
 	if use0RTT {
 		err := common.PingToGatherSessionTicketAndToken(addr.String(), tlsConf, &conf)
@@ -163,15 +163,16 @@ func Run(addr net.UDPAddr, timeToFirstByteOnly bool, printRaw bool, createQLog b
 	}
 
 	var connection quic.Connection
+	ctx := context.Background()
 	if use0RTT {
 		var err error
-		connection, err = quic.DialAddrEarly(addr.String(), tlsConf, &conf)
+		connection, err = quic.DialAddrEarly(ctx, addr.String(), tlsConf, &conf)
 		if err != nil {
 			panic(fmt.Errorf("failed to establish connection: %w", err))
 		}
 	} else {
 		var err error
-		connection, err = quic.DialAddr(addr.String(), tlsConf, &conf)
+		connection, err = quic.DialAddr(ctx, addr.String(), tlsConf, &conf)
 		if err != nil {
 			panic(fmt.Errorf("failed to establish connection: %w", err))
 		}
@@ -180,21 +181,21 @@ func Run(addr net.UDPAddr, timeToFirstByteOnly bool, printRaw bool, createQLog b
 	c.state.SetEstablishmentTime()
 	c.reportEstablishmentTime(&c.state)
 
-	if connection.ExtraStreamEncrypted() {
-		c.logger.Infof("use XSE-QUIC")
-	}
+	// if connection.ExtraStreamEncrypted() {
+	// 	c.logger.Infof("use XSE-QUIC")
+	// }
 
 	// migrate
-	if migrateAfter.Nanoseconds() != 0 {
-		go func() {
-			time.Sleep(migrateAfter)
-			addr, err := connection.MigrateUDPSocket()
-			if err != nil {
-				panic(fmt.Errorf("failed to migrate UDP socket: %w", err))
-			}
-			c.logger.Infof("migrated to %s", addr.String())
-		}()
-	}
+	// if migrateAfter.Nanoseconds() != 0 {
+	// 	go func() {
+	// 		time.Sleep(migrateAfter)
+	// 		addr, err := connection.MigrateUDPSocket()
+	// 		if err != nil {
+	// 			panic(fmt.Errorf("failed to migrate UDP socket: %w", err))
+	// 		}
+	// 		c.logger.Infof("migrated to %s", addr.String())
+	// 	}()
+	// }
 
 	// close gracefully on interrupt (CTRL+C)
 	intChan := make(chan os.Signal, 1)

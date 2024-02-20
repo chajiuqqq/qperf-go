@@ -1,6 +1,6 @@
 package common
 
-import "github.com/lucas-clemente/quic-go"
+import "github.com/quic-go/quic-go"
 
 // TODO IANA registration
 const QperfALPN = "qperf"

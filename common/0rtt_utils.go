@@ -1,9 +1,10 @@
 package common
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
-	"github.com/lucas-clemente/quic-go"
+	"github.com/quic-go/quic-go"
 )
 
 // PingToGatherSessionTicketAndToken establishes a new QUIC connection.
@@ -26,7 +27,7 @@ func PingToGatherSessionTicketAndToken(addr string, tlsConf *tls.Config, config 
 	tmpConfig := config.Clone()
 	tmpConfig.TokenStore = singleTokenStore
 
-	connection, err := quic.DialAddr(addr, tmpTlsConf, tmpConfig)
+	connection, err := quic.DialAddr(context.Background(), addr, tmpTlsConf, tmpConfig)
 	if err != nil {
 		return err
 	}

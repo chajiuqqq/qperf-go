@@ -2,7 +2,7 @@ package common
 
 import (
 	"context"
-	"github.com/lucas-clemente/quic-go"
+	"github.com/quic-go/quic-go"
 )
 
 type SingleTokenStore struct {
@@ -31,7 +31,7 @@ func (s *SingleTokenStore) Put(key string, token *quic.ClientToken) {
 	case <-s.emptyContext.Done():
 		return // already set
 	default:
-		//TODO make thread safe
+		// TODO make thread safe
 		s.key = &key
 		s.token = token
 		s.emptyContextCancel()
