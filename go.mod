@@ -2,14 +2,12 @@ module qperf-go
 
 go 1.21
 
-replace github.com/marten-seemann/qtls-go1-19 => github.com/birneee/qtls-go1-19 v0.1.0
-
 require (
+	github.com/apernet/quic-go v0.41.1-0.20240122005439-5bf4609c416f
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gin-gonic/gin v1.9.1
-	github.com/marten-seemann/qtls-go1-19 v0.1.1
-	github.com/quic-go/quic-go v0.41.0
 	github.com/urfave/cli/v2 v2.3.0
+	golang.org/x/exp v0.0.0-20221205204356-47842c84f3db
 )
 
 require (
@@ -41,7 +39,6 @@ require (
 	go.uber.org/mock v0.3.0 // indirect
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/crypto v0.9.0 // indirect
-	golang.org/x/exp v0.0.0-20221205204356-47842c84f3db // indirect
 	golang.org/x/mod v0.11.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect

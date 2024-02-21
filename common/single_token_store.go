@@ -2,7 +2,7 @@ package common
 
 import (
 	"context"
-	"github.com/quic-go/quic-go"
+	"github.com/apernet/quic-go"
 )
 
 type SingleTokenStore struct {

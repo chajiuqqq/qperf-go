@@ -2,7 +2,7 @@ package server
 
 import (
 	"fmt"
-	"github.com/quic-go/quic-go"
+	"github.com/apernet/quic-go"
 	"io"
 	"qperf-go/common"
 )

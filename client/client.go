@@ -6,6 +6,8 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/apernet/quic-go"
+	"github.com/apernet/quic-go/qlog"
 	"github.com/dustin/go-humanize"
 	"github.com/urfave/cli/v2"
 	"io"
@@ -18,8 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/quic-go/quic-go"
-	"github.com/quic-go/quic-go/http3"
+	"github.com/apernet/quic-go/http3"
 )
 
 const (
@@ -59,15 +60,16 @@ func Run(addr net.UDPAddr, timeToFirstByteOnly bool, printRaw bool, createQLog b
 
 	c.logger = common.DefaultLogger.WithPrefix(logPrefix)
 
-	// tracers := make([]logging.Tracer, 0)
-	//
-	// tracers = append(tracers, common.StateTracer{
+	// tracers := make([]logging.ConnectionTracer, 0)
+
+	// tracers = append(tracers, common.StateConnectionTracer{
 	// 	State: &c.state,
 	// })
-
-	// if createQLog {
-	// 	tracers = append(tracers, common.NewQlogTracer(qlogPrefix, c.logger))
-	// }
+	tracer := qlog.DefaultTracer
+	if !createQLog {
+		// tracers = append(tracers, common.NewQlogTracer(qlogPrefix, c.logger))
+		tracer = nil
+	}
 
 	// tracers = append(tracers, common.NewEventTracer(common.Handlers{
 	// 	UpdatePath: func(odcid logging.ConnectionID, newRemote net.Addr) {
@@ -128,7 +130,7 @@ func Run(addr net.UDPAddr, timeToFirstByteOnly bool, printRaw bool, createQLog b
 	}
 
 	conf := quic.Config{
-		// Tracer: logging.NewMultiplexedTracer(tracers...),
+		Tracer: tracer,
 		// IgnoreReceived1RTTPacketsUntilFirstPathMigration: proxyAddr != nil, // TODO maybe not necessary for client
 		// EnableActiveMigration:                            true,
 		// ProxyConf:                                        proxyConf,

@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/quic-go/quic-go/logging"
+	"github.com/apernet/quic-go/logging"
 )
 
 type StateTracer struct {

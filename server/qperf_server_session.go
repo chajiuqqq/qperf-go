@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/quic-go/quic-go"
+	"github.com/apernet/quic-go"
 	"qperf-go/common"
 	"sync"
 )

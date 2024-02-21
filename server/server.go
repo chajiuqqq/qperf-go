@@ -4,16 +4,18 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/apernet/quic-go"
+	"github.com/apernet/quic-go/qlog"
 	"html/template"
 	"net"
 	"net/http"
 	"os"
 	"qperf-go/common"
+	"qperf-go/internal/congestion"
 	"time"
 
+	"github.com/apernet/quic-go/http3"
 	"github.com/gin-gonic/gin"
-	"github.com/quic-go/quic-go"
-	"github.com/quic-go/quic-go/http3"
 )
 
 // Run server.
@@ -24,8 +26,10 @@ func Run(addr net.UDPAddr, createQLog bool, migrateAfter time.Duration, tlsServe
 
 	// tracers := make([]logging.Tracer, 0)
 
-	if createQLog {
-		// tracers = append(tracers, common.NewQlogTracer(qlogPrefix, logger))
+	tracer := qlog.DefaultTracer
+	if !createQLog {
+		// tracers = append(tracers, common.NewQlogTracer(qlogPrefix, c.logger))
+		tracer = nil
 	}
 
 	// TODO somehow associate it with the qperf session for logging
@@ -51,7 +55,7 @@ func Run(addr net.UDPAddr, createQLog bool, migrateAfter time.Duration, tlsServe
 	}
 
 	conf := quic.Config{
-		// Tracer:                         logging.NewMultiplexedTracer(tracers...),
+		Tracer: tracer,
 		// EnableActiveMigration:          true,
 		// InitialCongestionWindow:        initialCongestionWindow,
 		// MinCongestionWindow:            minCongestionWindow,
@@ -125,6 +129,8 @@ func Run(addr net.UDPAddr, createQLog bool, migrateAfter time.Duration, tlsServe
 		if err != nil {
 			panic(err)
 		}
+		// tx in bytes
+		congestion.UseBrutal(quicConnection, uint64(5*1024*1024))
 
 		qperfSession := &qperfServerSession{
 			connection:   quicConnection,
@@ -178,51 +184,4 @@ func setupHandler(www string) http.Handler {
 		})
 	})
 	return r
-
-	// mux := http.NewServeMux()
-
-	// if len(www) > 0 {
-	// 	mux.Handle("/", http.FileServer(http.Dir(www)))
-	// } else {
-	// 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-	// 		fmt.Printf("%#v\n", r)
-	// 		const maxSize = 1 << 30 // 1 GB
-	// 		num, err := strconv.ParseInt(strings.ReplaceAll(r.RequestURI, "/", ""), 10, 64)
-	// 		if err != nil || num <= 0 || num > maxSize {
-	// 			w.WriteHeader(400)
-	// 			return
-	// 		}
-	// 		w.Write(generatePRData(int(num)))
-	// 	})
-	// }
-
-	// mux.HandleFunc("/demo/tile", func(w http.ResponseWriter, r *http.Request) {
-	// 	// Small 40x40 png
-	// 	w.Write([]byte{
-	// 		0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
-	// 		0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x28, 0x00, 0x00, 0x00, 0x28,
-	// 		0x01, 0x03, 0x00, 0x00, 0x00, 0xb6, 0x30, 0x2a, 0x2e, 0x00, 0x00, 0x00,
-	// 		0x03, 0x50, 0x4c, 0x54, 0x45, 0x5a, 0xc3, 0x5a, 0xad, 0x38, 0xaa, 0xdb,
-	// 		0x00, 0x00, 0x00, 0x0b, 0x49, 0x44, 0x41, 0x54, 0x78, 0x01, 0x63, 0x18,
-	// 		0x61, 0x00, 0x00, 0x00, 0xf0, 0x00, 0x01, 0xe2, 0xb8, 0x75, 0x22, 0x00,
-	// 		0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
-	// 	})
-	// })
-
-	// mux.HandleFunc("/demo/tiles", func(w http.ResponseWriter, r *http.Request) {
-	// 	io.WriteString(w, "<html><head><style>img{width:40px;height:40px;}</style></head><body>")
-	// 	for i := 0; i < 200; i++ {
-	// 		fmt.Fprintf(w, `<img src="/demo/tile?cachebust=%d">`, i)
-	// 	}
-	// 	io.WriteString(w, "</body></html>")
-	// })
-
-	// mux.HandleFunc("/demo/echo", func(w http.ResponseWriter, r *http.Request) {
-	// 	body, err := io.ReadAll(r.Body)
-	// 	if err != nil {
-	// 		fmt.Printf("error reading body while handling /echo: %s\n", err.Error())
-	// 	}
-	// 	w.Write(body)
-	// })
-	// return mux
 }
