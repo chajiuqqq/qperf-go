@@ -2,7 +2,6 @@ package cubic
 
 import (
 	"math"
-	"qperf-go/internal/congestion/common"
 	"qperf-go/internal/protocol"
 	"time"
 )
@@ -36,7 +35,7 @@ const betaLastMax float32 = 0.85
 
 // Cubic implements the cubic algorithm from TCP
 type Cubic struct {
-	clock common.Clock
+	clock Clock
 
 	// Number of connections to simulate.
 	numConnections int
@@ -66,7 +65,7 @@ type Cubic struct {
 }
 
 // NewCubic returns a new Cubic instance
-func NewCubic(clock common.Clock) *Cubic {
+func NewCubic(clock Clock) *Cubic {
 	c := &Cubic{
 		clock:          clock,
 		numConnections: defaultNumConnections,

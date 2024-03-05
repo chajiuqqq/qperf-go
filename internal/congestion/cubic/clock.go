@@ -1,4 +1,4 @@
-package common
+package cubic
 
 import "time"
 
