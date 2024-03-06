@@ -6,6 +6,7 @@ require (
 	github.com/apernet/quic-go v0.41.1-0.20240122005439-5bf4609c416f
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gin-gonic/gin v1.9.1
+	github.com/go-redis/redis/v8 v8.11.5
 	github.com/quic-go/quic-go v0.41.0
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/exp v0.0.0-20221205204356-47842c84f3db
@@ -23,7 +24,6 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.14.0 // indirect
-	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/google/pprof v0.0.0-20210407192527-94a9f03dee38 // indirect

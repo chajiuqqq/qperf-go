@@ -3,6 +3,7 @@ package rl
 import (
 	"context"
 	"fmt"
+	"github.com/apernet/quic-go/congestion"
 	"math/rand"
 	"testing"
 	"time"
@@ -43,9 +44,9 @@ func TestQuicMqManager_PublishState(t *testing.T) {
 			fmt.Println(ctx.Err())
 			return
 		case <-time.Tick(time.Second):
-			err = qm.PublishState(StateMsg{
-				Cwnd: rand.Intn(1000),
-				Rtt:  rand.Intn(100),
+			err = qm.PublishState(&StateMsg{
+				Cwnd: congestion.ByteCount(rand.Intn(1000)),
+				Rtt:  int64(rand.Intn(100)),
 			})
 			if err != nil {
 				fmt.Println(err)
@@ -57,7 +58,7 @@ func TestQuicMqManager_PublishState(t *testing.T) {
 
 func TestQuicMqManager_GetActionCh(t *testing.T) {
 
-	r, err := NewRedisManager("100.93.89.76", "6379", "")
+	r, err := NewRedisManager("localhost", "6379", "")
 	if err != nil {
 		fmt.Println("Failed to create Redis manager:", err)
 		return
@@ -117,7 +118,7 @@ func TestQuicMqManager_GetActionCh(t *testing.T) {
 			select {
 			case <-ctx.Done():
 				fmt.Println(ctx.Err())
-				err = qm.PublishState(StateMsg{
+				err = qm.PublishState(&StateMsg{
 					FIN: true,
 				})
 				if err != nil {
@@ -126,10 +127,10 @@ func TestQuicMqManager_GetActionCh(t *testing.T) {
 				return
 			case <-time.Tick(time.Second):
 				msg := StateMsg{
-					Cwnd: rand.Intn(1000),
-					Rtt:  rand.Intn(100),
+					Cwnd: congestion.ByteCount(rand.Intn(1000)),
+					Rtt:  int64(rand.Intn(100)),
 				}
-				err = qm.PublishState(msg)
+				err = qm.PublishState(&msg)
 				if err != nil {
 					fmt.Println(err)
 				}

@@ -4,6 +4,7 @@ import (
 	"github.com/apernet/quic-go"
 	bbr2 "qperf-go/internal/congestion/bbr"
 	"qperf-go/internal/congestion/brutal"
+	"qperf-go/internal/congestion/rl"
 )
 
 func UseBBR(conn quic.Connection) {
@@ -15,4 +16,7 @@ func UseBBR(conn quic.Connection) {
 
 func UseBrutal(conn quic.Connection, tx uint64) {
 	conn.SetCongestionControl(brutal.NewBrutalSender(tx))
+}
+func UseRL(conn quic.Connection, connectionID uint64) {
+	conn.SetCongestionControl(rl.NewRLSender(conn.Context(), connectionID))
 }

@@ -130,8 +130,8 @@ func Run(addr net.UDPAddr, createQLog bool, migrateAfter time.Duration, tlsServe
 			panic(err)
 		}
 		// tx in bytes
-		congestion.UseBrutal(quicConnection, uint64(5*1024*1024))
-
+		//congestion.UseBrutal(quicConnection, uint64(5*1024*1024))
+		congestion.UseRL(quicConnection, nextConnectionId)
 		qperfSession := &qperfServerSession{
 			connection:   quicConnection,
 			connectionID: nextConnectionId,

@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/apernet/quic-go/congestion"
 	"github.com/go-redis/redis/v8"
 	"math/rand"
 )
 
 type StateMsg struct {
-	Seq  int  `json:"seq"`
-	Cwnd int  `json:"cwnd"`
-	Rtt  int  `json:"rtt"`
-	FIN  bool `json:"FIN,omitempty"`
+	Seq  int                  `json:"seq"`
+	Cwnd congestion.ByteCount `json:"cwnd"`
+	Rtt  int64                `json:"rtt"`
+	FIN  bool                 `json:"FIN,omitempty"`
 }
 type ActionMsg struct {
 	Seq    int `json:"seq"`
@@ -71,7 +72,7 @@ func (q *QuicMqManager) nextSeq() int {
 	q.seq += 1
 	return q.seq
 }
-func (q *QuicMqManager) PublishState(msg StateMsg) error {
+func (q *QuicMqManager) PublishState(msg *StateMsg) error {
 	msg.Seq = q.nextSeq()
 	body, err := json.Marshal(msg)
 	if err != nil {
