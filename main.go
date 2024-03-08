@@ -264,6 +264,11 @@ func main() {
 						Usage: "redis addr [host:port]",
 						Value: "localhost:6379",
 					},
+					&cli.StringFlag{
+						Name:  "cc",
+						Usage: "congestion algorithm,default Cubic, available [cubic,rl]",
+						Value: common.CC_CUBIC,
+					},
 				},
 				Action: func(c *cli.Context) error {
 					initialReceiveWindow, err := common.ParseByteCountWithUnit(c.String("initial-receive-window"))
@@ -293,6 +298,7 @@ func main() {
 						c.Bool("http3"),
 						c.String("www"),
 						c.String("redis"),
+						c.String("cc"),
 					)
 					return nil
 				},

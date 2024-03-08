@@ -13,8 +13,8 @@ import (
 	"qperf-go/common"
 	"qperf-go/internal/congestion"
 	"qperf-go/internal/congestion/rl"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/apernet/quic-go/http3"
 	"github.com/gin-gonic/gin"
@@ -22,7 +22,7 @@ import (
 
 // Run server.
 // if proxyAddr is nil, no proxy is used.
-func Run(addr net.UDPAddr, createQLog bool, migrateAfter time.Duration, tlsServerCertFile string, tlsServerKeyFile string, initialCongestionWindow uint32, minCongestionWindow uint32, maxCongestionWindow uint32, initialReceiveWindow uint64, maxReceiveWindow uint64, noXse bool, logPrefix string, qlogPrefix string, http3enabled bool, www string,redisAddr string) {
+func Run(addr net.UDPAddr, createQLog bool, migrateAfter time.Duration, tlsServerCertFile string, tlsServerKeyFile string, initialCongestionWindow uint32, minCongestionWindow uint32, maxCongestionWindow uint32, initialReceiveWindow uint64, maxReceiveWindow uint64, noXse bool, logPrefix string, qlogPrefix string, http3enabled bool, www string, redisAddr string, cc string) {
 
 	logger := common.DefaultLogger.WithPrefix(logPrefix)
 
@@ -125,7 +125,7 @@ func Run(addr net.UDPAddr, createQLog bool, migrateAfter time.Duration, tlsServe
 	// }
 
 	var nextConnectionId uint64 = 0
-	redisAddrSplits := strings.Split(redisAddr,":")
+	redisAddrSplits := strings.Split(redisAddr, ":")
 	redisConf := rl.RedisConf{
 		Host: redisAddrSplits[0],
 		Port: redisAddrSplits[1],
@@ -135,9 +135,19 @@ func Run(addr net.UDPAddr, createQLog bool, migrateAfter time.Duration, tlsServe
 		if err != nil {
 			panic(err)
 		}
-		// tx in bytes
-		//congestion.UseBrutal(quicConnection, uint64(5*1024*1024))
-		congestion.UseRL(quicConnection, nextConnectionId,&redisConf)
+
+		// cc
+		switch cc {
+		case common.CC_CUBIC:
+		case common.CC_RL:
+			congestion.UseRL(quicConnection, nextConnectionId, &redisConf)
+		case common.CC_BRUTAL:
+			congestion.UseBrutal(quicConnection, uint64(5*1024*1024))
+		default:
+			panic("invalid cc:" + cc)
+		}
+		logger.Infof("using %s cc", cc)
+
 		qperfSession := &qperfServerSession{
 			connection:   quicConnection,
 			connectionID: nextConnectionId,
