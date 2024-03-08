@@ -259,6 +259,11 @@ func main() {
 						Name:  "www",
 						Usage: "static folder for http3",
 					},
+					&cli.StringFlag{
+						Name:  "redis",
+						Usage: "redis addr [host:port]",
+						Value: "localhost:6379",
+					},
 				},
 				Action: func(c *cli.Context) error {
 					initialReceiveWindow, err := common.ParseByteCountWithUnit(c.String("initial-receive-window"))
@@ -287,6 +292,7 @@ func main() {
 						c.String("qlog-prefix"),
 						c.Bool("http3"),
 						c.String("www"),
+						c.String("redis"),
 					)
 					return nil
 				},

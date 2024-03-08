@@ -18,7 +18,10 @@ const (
 )
 
 var _ congestion.CongestionControl = &RLSender{}
-
+type RedisConf struct{
+	Host string
+	Port string
+}
 type RLSender struct {
 	rttStats        congestion.RTTStatsProvider
 	maxDatagramSize congestion.ByteCount
@@ -32,7 +35,7 @@ type RLSender struct {
 	ctx                   context.Context
 }
 
-func NewRLSender(ctx context.Context, connectionID uint64) *RLSender {
+func NewRLSender(ctx context.Context, connectionID uint64,redisConf *RedisConf) *RLSender {
 	debug, _ := strconv.ParseBool(os.Getenv(debugEnv))
 	bs := &RLSender{
 		maxDatagramSize: congestion.InitialPacketSizeIPv4,
@@ -43,9 +46,12 @@ func NewRLSender(ctx context.Context, connectionID uint64) *RLSender {
 	bs.pacer = common.NewPacer(func() congestion.ByteCount {
 		return bs.cwnd
 	})
+	if redisConf==nil{
+		panic("Empty redis conf")
+	}
 
 	//init mq
-	r, err := NewRedisManager("localhost", "6379", "")
+	r, err := NewRedisManager(redisConf.Host, redisConf.Port, "")
 	if err != nil {
 		fmt.Println("Failed to create Redis manager:", err)
 		panic(err)

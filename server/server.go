@@ -12,7 +12,9 @@ import (
 	"os"
 	"qperf-go/common"
 	"qperf-go/internal/congestion"
+	"qperf-go/internal/congestion/rl"
 	"time"
+	"strings"
 
 	"github.com/apernet/quic-go/http3"
 	"github.com/gin-gonic/gin"
@@ -20,7 +22,7 @@ import (
 
 // Run server.
 // if proxyAddr is nil, no proxy is used.
-func Run(addr net.UDPAddr, createQLog bool, migrateAfter time.Duration, tlsServerCertFile string, tlsServerKeyFile string, initialCongestionWindow uint32, minCongestionWindow uint32, maxCongestionWindow uint32, initialReceiveWindow uint64, maxReceiveWindow uint64, noXse bool, logPrefix string, qlogPrefix string, http3enabled bool, www string) {
+func Run(addr net.UDPAddr, createQLog bool, migrateAfter time.Duration, tlsServerCertFile string, tlsServerKeyFile string, initialCongestionWindow uint32, minCongestionWindow uint32, maxCongestionWindow uint32, initialReceiveWindow uint64, maxReceiveWindow uint64, noXse bool, logPrefix string, qlogPrefix string, http3enabled bool, www string,redisAddr string) {
 
 	logger := common.DefaultLogger.WithPrefix(logPrefix)
 
@@ -123,7 +125,11 @@ func Run(addr net.UDPAddr, createQLog bool, migrateAfter time.Duration, tlsServe
 	// }
 
 	var nextConnectionId uint64 = 0
-
+	redisAddrSplits := strings.Split(redisAddr,":")
+	redisConf := rl.RedisConf{
+		Host: redisAddrSplits[0],
+		Port: redisAddrSplits[1],
+	}
 	for {
 		quicConnection, err := listener.Accept(context.Background())
 		if err != nil {
@@ -131,7 +137,7 @@ func Run(addr net.UDPAddr, createQLog bool, migrateAfter time.Duration, tlsServe
 		}
 		// tx in bytes
 		//congestion.UseBrutal(quicConnection, uint64(5*1024*1024))
-		congestion.UseRL(quicConnection, nextConnectionId)
+		congestion.UseRL(quicConnection, nextConnectionId,&redisConf)
 		qperfSession := &qperfServerSession{
 			connection:   quicConnection,
 			connectionID: nextConnectionId,
