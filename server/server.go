@@ -140,7 +140,7 @@ func Run(addr net.UDPAddr, createQLog bool, migrateAfter time.Duration, tlsServe
 		switch cc {
 		case common.CC_CUBIC:
 		case common.CC_RL:
-			congestion.UseRL(quicConnection, nextConnectionId, &redisConf)
+			congestion.UseRL(quicConnection, &redisConf)
 		case common.CC_BRUTAL:
 			congestion.UseBrutal(quicConnection, uint64(5*1024*1024))
 		default:

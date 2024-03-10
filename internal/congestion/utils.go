@@ -17,6 +17,6 @@ func UseBBR(conn quic.Connection) {
 func UseBrutal(conn quic.Connection, tx uint64) {
 	conn.SetCongestionControl(brutal.NewBrutalSender(tx))
 }
-func UseRL(conn quic.Connection, connectionID uint64, redisConf *rl.RedisConf) {
-	conn.SetCongestionControl(rl.NewRLSender(conn.Context(), connectionID,redisConf))
+func UseRL(conn quic.Connection, redisConf *rl.RedisConf) {
+	conn.SetCongestionControl(rl.NewRLSender(conn.Context(), redisConf))
 }

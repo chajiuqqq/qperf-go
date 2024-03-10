@@ -114,7 +114,7 @@ func NewRedisManager(host, port, password string) (*RedisManager, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	fmt.Printf("Redis connected to %s\n", redisAddr)
 	return &RedisManager{
 		client: client,
 	}, nil

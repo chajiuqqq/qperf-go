@@ -15,10 +15,12 @@ const (
 	debugEnv                = "HYSTERIA_BRUTAL_DEBUG"
 	debugPrintInterval      = 2
 	initialCongestionWindow = 20
+	MQ_CONNECTION_ID        = "test1234"
 )
 
 var _ congestion.CongestionControl = &RLSender{}
-type RedisConf struct{
+
+type RedisConf struct {
 	Host string
 	Port string
 }
@@ -35,7 +37,7 @@ type RLSender struct {
 	ctx                   context.Context
 }
 
-func NewRLSender(ctx context.Context, connectionID uint64,redisConf *RedisConf) *RLSender {
+func NewRLSender(ctx context.Context, redisConf *RedisConf) *RLSender {
 	debug, _ := strconv.ParseBool(os.Getenv(debugEnv))
 	bs := &RLSender{
 		maxDatagramSize: congestion.InitialPacketSizeIPv4,
@@ -46,7 +48,7 @@ func NewRLSender(ctx context.Context, connectionID uint64,redisConf *RedisConf) 
 	bs.pacer = common.NewPacer(func() congestion.ByteCount {
 		return bs.cwnd
 	})
-	if redisConf==nil{
+	if redisConf == nil {
 		panic("Empty redis conf")
 	}
 
@@ -57,7 +59,7 @@ func NewRLSender(ctx context.Context, connectionID uint64,redisConf *RedisConf) 
 		panic(err)
 	}
 
-	bs.mqManager = NewQuicMqManager(r, "test1234")
+	bs.mqManager = NewQuicMqManager(r, MQ_CONNECTION_ID)
 	bs.actionMap = map[int]int{
 		0: -3,
 		1: -1,
